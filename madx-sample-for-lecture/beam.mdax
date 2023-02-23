@@ -1,0 +1,13 @@
+TITLE, "simple code";
+
+SELECT, FLAG=ERROR, CLASS=QUADRUPOLE;
+
+BEAM, 
+    PARTICLE=PROTON, 
+    ENERGY=0.1+PMASS,
+    EX=0.01,
+    EY=0.01;
+
+RESBEAM;
+
+SHOW, BEAM;

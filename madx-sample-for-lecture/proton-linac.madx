@@ -1,0 +1,22 @@
+title, "proton-linac";
+
+
+D1: DRIFT,l=1.5;
+D2: DRIFT,l=0.5;
+M1: MONITOR,aperture=0.5,l=0.3;
+Q1: QUADRUPOLE,aperture=1,k1=1,l=0.5;
+Q2: QUADRUPOLE,aperture=1,k1=-1,l=0.5;
+S1: SBEND,angle:=pi/8,k1=-0.5,l=0.5;
+BL1: LINE=(D2,Q2,Q1,D2,Q2,D2,Q1,D2,S1,D1,Q2,D2,Q1,D1,M1);
+
+
+beam,energy=0.2,ex=1e-06,ey=1e-06,mass=0.938272046,particle=proton;
+use,sequence=BL1;
+twiss,file="twiss.file.tfs";
+ptc_create_universe,sector_nmul=10,sector_nmul_max=10;
+ptc_create_layout;
+call,file=ptc_particles.madx;
+ptc_track,element_by_element=true,file="ptc_track.file.tfs",icase=6,onetable=true;
+ptc_track_end;
+ptc_end;
+

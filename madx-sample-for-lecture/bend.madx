@@ -1,0 +1,15 @@
+title, "bending magnet";
+
+
+D1: DRIFT,l=0.5;
+B1: SBEND,angle:=pi/8,k1=-0.1,l=0.5;
+
+BL1: LINE=(D1, B1, D1);
+
+beam,energy=1.2,ex=1e-06,ey=1e-06,particle=proton;
+
+use,sequence=BL1;
+
+twiss;
+
+plot, haxis=s, colour=100, vaxis=betx, bety, interpolate=TRUE;
