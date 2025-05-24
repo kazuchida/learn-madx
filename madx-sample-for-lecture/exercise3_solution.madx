@@ -1,0 +1,102 @@
+! 練習問題3の解答例: エラー解析
+! 目標: アライメントエラーがビーム軌道に与える影響を調査
+
+TITLE, "Exercise 3: Error Analysis";
+
+! ====================
+! 基本格子定義
+! ====================
+kqf := 1.2;
+kqd := -1.2;
+
+QF: QUADRUPOLE, L=0.5, K1:=kqf;
+QD: QUADRUPOLE, L=0.5, K1:=kqd;
+DRIFT1: DRIFT, L=2.0;
+
+FODO_CELL: SEQUENCE, L=6.0;
+    QF, AT=0.25;
+    DRIFT1, AT=1.75;
+    QD, AT=3.25;
+    DRIFT1, AT=4.75;
+ENDSEQUENCE;
+
+BEAM, PARTICLE=PROTON, ENERGY=1.0;
+USE, SEQUENCE=FODO_CELL;
+
+! ====================
+! エラーなしの基準軌道計算
+! ====================
+TWISS, BETX=10.0, BETY=10.0, FILE="exercise3_ideal.tfs";
+PRINTF, TEXT="理想軌道 - 最大X軌道: %f mm", 
+        VALUE=1000*TABLE(TWISS,X,QF);
+
+! ====================
+! エラー定義と統計解析
+! ====================
+! 結果保存用変数
+x_rms_sum := 0;
+y_rms_sum := 0;
+n_seeds := 10;  ! 統計サンプル数
+
+! 統計ループ
+i := 1;
+while (i <= n_seeds) {
+    ! ランダムシードの設定
+    EOPTION, SEED=i;
+    
+    ! エラーのクリア
+    EOPTION, RESET;
+    
+    ! 四極磁石にアライメントエラーを設定
+    SELECT, FLAG=ERROR, CLASS=QUADRUPOLE;
+    EALIGN, DX:=GAUSS()*0.0001, DY:=GAUSS()*0.0001;  ! ±0.1mm RMS
+    
+    ! エラーありの軌道計算
+    TWISS, BETX=10.0, BETY=10.0;
+    
+    ! RMS軌道歪みを累積
+    x_max := ABS(TABLE(TWISS,X,QF));
+    y_max := ABS(TABLE(TWISS,Y,QF));
+    x_rms_sum := x_rms_sum + x_max*x_max;
+    y_rms_sum := y_rms_sum + y_max*y_max;
+    
+    PRINTF, TEXT="Seed %d: X_max=%f mm, Y_max=%f mm", 
+            VALUE=i, 1000*x_max, 1000*y_max;
+    
+    i := i + 1;
+}
+
+! ====================
+! 統計結果の計算
+! ====================
+x_rms := SQRT(x_rms_sum / n_seeds);
+y_rms := SQRT(y_rms_sum / n_seeds);
+
+PRINTF, TEXT="統計結果 (%d サンプル):", VALUE=n_seeds;
+PRINTF, TEXT="X軌道RMS歪み: %f mm", VALUE=1000*x_rms;
+PRINTF, TEXT="Y軌道RMS歪み: %f mm", VALUE=1000*y_rms;
+
+! ====================
+! 代表的なエラーケースの詳細解析
+! ====================
+EOPTION, RESET;
+EOPTION, SEED=1;
+
+SELECT, FLAG=ERROR, CLASS=QUADRUPOLE;
+EALIGN, DX:=GAUSS()*0.0001, DY:=GAUSS()*0.0001;
+
+SELECT, FLAG=TWISS, COLUMN=NAME,S,X,Y,PX,PY;
+TWISS, BETX=10.0, BETY=10.0, FILE="exercise3_with_errors.tfs";
+
+PLOT, HAXIS=S, VAXIS=X,Y, COLOUR=100, FILE="exercise3_orbit_distortion";
+
+STOP;
+
+! ====================
+! 解答のポイント:
+! - GAUSS()関数でガウス分布のランダムエラーを生成
+! - 統計解析には複数のランダムシードが必要
+! - EOPTION, RESETでエラーをクリア
+! - RMS値の計算で統計的な影響を評価
+! - 0.1mm RMSエラーは現実的な値
+! ====================

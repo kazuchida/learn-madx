@@ -1,0 +1,120 @@
+! 練習問題4の解答例: 粒子追跡
+! 目標: 粒子の長期的な安定性を調査
+
+TITLE, "Exercise 4: Particle Tracking";
+
+! ====================
+! 基本格子定義（安定なパラメータ）
+! ====================
+kqf := 1.0;    ! 少し弱めの設定で安定性確保
+kqd := -1.0;
+
+QF: QUADRUPOLE, L=0.5, K1:=kqf;
+QD: QUADRUPOLE, L=0.5, K1:=kqd;
+DRIFT1: DRIFT, L=2.0;
+
+FODO_CELL: SEQUENCE, L=6.0;
+    QF, AT=0.25;
+    DRIFT1, AT=1.75;
+    QD, AT=3.25;
+    DRIFT1, AT=4.75;
+ENDSEQUENCE;
+
+BEAM, PARTICLE=PROTON, ENERGY=1.0;
+USE, SEQUENCE=FODO_CELL;
+
+! ====================
+! 格子の安定性確認
+! ====================
+TWISS, BETX=10.0, BETY=10.0;
+PRINTF, TEXT="チューン: Qx=%f, Qy=%f", 
+        VALUE=TABLE(SUMM,Q1), TABLE(SUMM,Q2);
+
+! 安定性条件の確認（|cos(2πQ)| < 1）
+cos_qx := COS(2*PI*TABLE(SUMM,Q1));
+cos_qy := COS(2*PI*TABLE(SUMM,Q2));
+PRINTF, TEXT="安定性: cos(2πQx)=%f, cos(2πQy)=%f", 
+        VALUE=cos_qx, cos_qy;
+
+! ====================
+! 追跡1: 基準運動量（Δp/p = 0）
+! ====================
+PRINTF, TEXT="=== 追跡1: Δp/p = 0 ===";
+
+TRACK, DELTAP=0.0, ONEPASS=false, DUMP=true;
+    START, X=0.001, Y=0.001, PX=0.0, PY=0.0;  ! 1mm初期変位
+    RUN, TURNS=1000, FFILE=1;
+ENDTRACK;
+
+! ====================
+! 追跡2: 正の運動量偏差（Δp/p = +0.1%）
+! ====================
+PRINTF, TEXT="=== 追跡2: Δp/p = +0.1% ===";
+
+TRACK, DELTAP=0.001, ONEPASS=false, DUMP=true;
+    START, X=0.001, Y=0.001, PX=0.0, PY=0.0;
+    RUN, TURNS=1000, FFILE=2;
+ENDTRACK;
+
+! ====================
+! 追跡3: 負の運動量偏差（Δp/p = -0.1%）
+! ====================
+PRINTF, TEXT="=== 追跡3: Δp/p = -0.1% ===";
+
+TRACK, DELTAP=-0.001, ONEPASS=false, DUMP=true;
+    START, X=0.001, Y=0.001, PX=0.0, PY=0.0;
+    RUN, TURNS=1000, FFILE=3;
+ENDTRACK;
+
+! ====================
+! 動的アパーチャの簡易推定
+! ====================
+PRINTF, TEXT="=== 動的アパーチャ推定 ===";
+
+! 複数の初期振幅で安定性をテスト
+x_test := 0.0005;  ! 0.5mm から開始
+stable_amplitude := 0;
+
+while (x_test < 0.01) {  ! 10mm まで
+    TRACK, DELTAP=0.0, ONEPASS=false;
+        START, X=x_test, Y=x_test, PX=0.0, PY=0.0;
+        RUN, TURNS=100;  ! 短期テスト
+    ENDTRACK;
+    
+    ! 最終位置を確認（発散していないかチェック）
+    final_x := TABLE(TRACKONE,X,100);
+    final_y := TABLE(TRACKONE,Y,100);
+    amplitude := SQRT(final_x*final_x + final_y*final_y);
+    
+    if (amplitude < 0.02) {  ! 2cm以下なら安定
+        stable_amplitude := x_test;
+        PRINTF, TEXT="振幅 %f mm: 安定", VALUE=1000*x_test;
+    } else {
+        PRINTF, TEXT="振幅 %f mm: 不安定", VALUE=1000*x_test;
+        break;
+    }
+    
+    x_test := x_test + 0.0005;  ! 0.5mm刻みで増加
+}
+
+PRINTF, TEXT="推定動的アパーチャ: %f mm", VALUE=1000*stable_amplitude;
+
+! ====================
+! フレーズ空間プロット用データ出力
+! ====================
+! 安定軌道の詳細追跡
+TRACK, DELTAP=0.0, ONEPASS=false, DUMP=true;
+    START, X=0.002, Y=0.002, PX=0.0, PY=0.0;  ! 2mm初期変位
+    RUN, TURNS=64, FFILE=4;  ! 位相空間プロット用
+ENDTRACK;
+
+STOP;
+
+! ====================
+! 解答のポイント:
+! - ONEPASS=falseで周期境界条件を使用
+! - DELTAP で運動量偏差を設定
+! - FFILE で出力ファイルを分離
+! - 動的アパーチャは非線形効果による制限
+! - 安定性は長期追跡で確認する必要がある
+! ====================

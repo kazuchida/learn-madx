@@ -1,0 +1,64 @@
+! 練習問題1の解答例: 基本的なFODO格子
+! 目標: 基本的なFODO格子を作成し、Twissパラメータを計算
+
+TITLE, "Exercise 1: Basic FODO Lattice";
+
+! ====================
+! 要素定義
+! ====================
+QF: QUADRUPOLE, L=0.5, K1=1.2;    ! 収束四極磁石
+QD: QUADRUPOLE, L=0.5, K1=-1.2;   ! 発散四極磁石  
+DRIFT1: DRIFT, L=2.0;             ! ドリフト空間
+
+! ====================
+! シーケンス定義 (セル長: 6.0m)
+! ====================
+FODO_CELL: SEQUENCE, L=6.0;
+    QF, AT=0.25;      ! 0.25mの位置に収束磁石
+    DRIFT1, AT=1.75;  ! 1.75mの位置にドリフト開始
+    QD, AT=3.25;      ! 3.25mの位置に発散磁石
+    DRIFT1, AT=4.75;  ! 4.75mの位置にドリフト開始
+ENDSEQUENCE;
+
+! ====================
+! ビーム定義 (1 GeV プロトン)
+! ====================
+BEAM, PARTICLE=PROTON, ENERGY=1.0;
+
+! ====================
+! シーケンス使用
+! ====================
+USE, SEQUENCE=FODO_CELL;
+
+! ====================
+! Twiss計算
+! ====================
+! 出力項目を選択
+SELECT, FLAG=TWISS, COLUMN=NAME,S,BETX,BETY,ALFX,ALFY,MUX,MUY;
+
+! Twiss計算実行
+TWISS, BETX=10.0, BETY=10.0, FILE="exercise1_twiss.tfs";
+
+! ====================
+! 結果の表示
+! ====================
+! 最大・最小ベータ関数値を表示
+VALUE, TABLE(TWISS,BETX,QF), TABLE(TWISS,BETX,QD);
+VALUE, TABLE(TWISS,BETY,QF), TABLE(TWISS,BETY,QD);
+
+! チューン値を表示  
+VALUE, TABLE(SUMM,Q1), TABLE(SUMM,Q2);
+
+! ====================
+! プロット作成
+! ====================
+PLOT, HAXIS=S, VAXIS=BETX,BETY, COLOUR=100, FILE="exercise1_beta";
+
+STOP;
+
+! ====================
+! 解答のポイント:
+! - FODO格子では収束磁石でβx最小、βy最大となる
+! - 発散磁石では βx最大、βy最小となる
+! - 対称な格子では αx=αy=0 となる位置がある
+! ====================

@@ -14,18 +14,18 @@ Accelerator Lattice Design and Simulation by MAD-X
 
 ---
 
-# MAD: Methodological Accelerator Design
+# MAD-X: Methodological Accelerator Design
 
 - Free simulation code for beam optics and lattice design.
 - Written in C/C++/F77/F90 and source code can be accessed on GitHub.
-- MDAX is a kind of single particle simulation, and not PIC simulation.
-- MADX provides interpreter. So user can write input file and run it on MDAX.
+- MAD-X is a kind of single particle simulation, and not PIC simulation.
+- MAD-X provides interpreter. So user can write input file and run it on MAD-X.
 
 We will see how to write and run input files!
 
 ---
 
-# Workflow of MDA-X
+# Workflow of MAD-X
 
 1. Define the machine hardware in input files (.madx)
     - Create own elements from classes.
@@ -42,7 +42,7 @@ We will see how to write and run input files!
 # References
 
 - [MAD-X Github Repo](https://github.com/MethodicalAcceleratorDesign/MAD-X)
-- [MDA-X Homepage](http://madx.web.cern.ch/madx/)
-- [X.Feng, et. al., "REVIEW OF PROTON LINCA BEAM DYNAMIC SIMULATION CODE"](https://inspirehep.net/files/302d188a02f0e249db8f3c622a182920)
+- [MAD-X Homepage](http://madx.web.cern.ch/madx/)
+- [X.Feng, et. al., "REVIEW OF PROTON LINAC BEAM DYNAMIC SIMULATION CODE"](https://inspirehep.net/files/302d188a02f0e249db8f3c622a182920)
 - [R.Cee, et. al., "A MAD-X MODEL OF THE HIT ACCELERATOR"](https://inspirehep.net/files/e368865b392d90f861385d199441be15)
 

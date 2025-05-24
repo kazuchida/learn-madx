@@ -1,0 +1,150 @@
+! 練習問題5の解答例: 高度なマッチング
+! 目標: 特定位置でのベータ関数値を制御するローカルマッチング
+
+TITLE, "Exercise 5: Advanced Local Matching";
+
+! ====================
+! 変数定義
+! ====================
+kqf1 := 1.2;   ! 第1四極磁石
+kqf2 := 1.2;   ! 第2四極磁石  
+kqd1 := -1.2;  ! 第3四極磁石
+kqd2 := -1.2;  ! 第4四極磁石
+
+! ====================
+! 拡張格子定義（マッチング用に4つの四極磁石）
+! ====================
+QF1: QUADRUPOLE, L=0.25, K1:=kqf1;
+QF2: QUADRUPOLE, L=0.25, K1:=kqf2;
+QD1: QUADRUPOLE, L=0.25, K1:=kqd1;
+QD2: QUADRUPOLE, L=0.25, K1:=kqd2;
+DRIFT1: DRIFT, L=1.0;
+DRIFT2: DRIFT, L=2.0;
+IP: MARKER;  ! 相互作用点（中央）
+
+! ====================
+! シーケンス定義（対称格子）
+! ====================
+MATCH_CELL: SEQUENCE, L=8.0;
+    QF1, AT=0.125;      ! 第1四極磁石
+    DRIFT1, AT=0.625;   ! ドリフト1
+    QF2, AT=1.625;      ! 第2四極磁石  
+    DRIFT2, AT=2.75;    ! ドリフト2
+    IP, AT=4.0;         ! 相互作用点（中央）
+    DRIFT2, AT=5.25;    ! ドリフト2（対称）
+    QD1, AT=6.375;      ! 第3四極磁石
+    DRIFT1, AT=7.375;   ! ドリフト1（対称）
+    QD2, AT=7.875;      ! 第4四極磁石
+ENDSEQUENCE;
+
+! ====================
+! ビーム定義
+! ====================
+BEAM, PARTICLE=PROTON, ENERGY=7000;  ! LHCエネルギー
+USE, SEQUENCE=MATCH_CELL;
+
+! ====================
+! マッチング前の状態確認
+! ====================
+TWISS, BETX=50.0, BETY=50.0;
+PRINTF, TEXT="マッチング前 - IP: βx=%f m, βy=%f m", 
+        VALUE=TABLE(TWISS,BETX,IP), TABLE(TWISS,BETY,IP);
+PRINTF, TEXT="マッチング前 - 端点: βx=%f m, βy=%f m", 
+        VALUE=TABLE(TWISS,BETX,QD2), TABLE(TWISS,BETY,QD2);
+
+! ====================
+! ローカルマッチング実行
+! ====================
+MATCH, SEQUENCE=MATCH_CELL;
+    
+    ! 調整変数の設定
+    VARY, NAME=kqf1, STEP=0.001, LOWER=-10, UPPER=10;
+    VARY, NAME=kqf2, STEP=0.001, LOWER=-10, UPPER=10;
+    VARY, NAME=kqd1, STEP=0.001, LOWER=-10, UPPER=10;
+    VARY, NAME=kqd2, STEP=0.001, LOWER=-10, UPPER=10;
+    
+    ! 制約条件1: IP位置でのベータ関数
+    CONSTRAINT, RANGE=IP, BETX=1.0, BETY=1.0;
+    
+    ! 制約条件2: IP位置でのアルファ関数（対称点）
+    CONSTRAINT, RANGE=IP, ALFX=0.0, ALFY=0.0;
+    
+    ! 制約条件3: 終端でのベータ関数
+    CONSTRAINT, RANGE=#E, BETX=10.0, BETY=10.0;
+    
+    ! 制約条件4: 周期境界条件（対称性）
+    CONSTRAINT, RANGE=#E, ALFX=0.0, ALFY=0.0;
+    
+    ! 最適化実行
+    LMDIF, CALLS=2000, TOLERANCE=1.0E-21;
+    
+ENDMATCH;
+
+! ====================
+! マッチング結果の確認
+! ====================
+SELECT, FLAG=TWISS, COLUMN=NAME,S,BETX,BETY,ALFX,ALFY;
+TWISS, BETX=10.0, BETY=10.0, FILE="exercise5_matched.tfs";
+
+PRINTF, TEXT="マッチング後 - IP: βx=%f m, βy=%f m", 
+        VALUE=TABLE(TWISS,BETX,IP), TABLE(TWISS,BETY,IP);
+PRINTF, TEXT="マッチング後 - IP: αx=%f, αy=%f", 
+        VALUE=TABLE(TWISS,ALFX,IP), TABLE(TWISS,ALFY,IP);
+PRINTF, TEXT="マッチング後 - 端点: βx=%f m, βy=%f m", 
+        VALUE=TABLE(TWISS,BETX,QD2), TABLE(TWISS,BETY,QD2);
+
+! ====================
+! 最終磁石強度の表示
+! ====================
+PRINTF, TEXT="最終磁石強度:";
+PRINTF, TEXT="KQF1=%f, KQF2=%f", VALUE=kqf1, kqf2;
+PRINTF, TEXT="KQD1=%f, KQD2=%f", VALUE=kqd1, kqd2;
+
+! ====================
+! ベータ関数プロット
+! ====================
+PLOT, HAXIS=S, VAXIS=BETX,BETY, COLOUR=100, 
+      TITLE="Matched Beta Functions", FILE="exercise5_beta_matched";
+
+! ====================
+! マッチング品質の評価
+! ====================
+! 制約条件からの偏差を計算
+beta_x_ip_error := ABS(TABLE(TWISS,BETX,IP) - 1.0);
+beta_y_ip_error := ABS(TABLE(TWISS,BETY,IP) - 1.0);
+alpha_x_ip_error := ABS(TABLE(TWISS,ALFX,IP));
+alpha_y_ip_error := ABS(TABLE(TWISS,ALFY,IP));
+
+PRINTF, TEXT="マッチング精度:";
+PRINTF, TEXT="βx@IP誤差: %e m", VALUE=beta_x_ip_error;
+PRINTF, TEXT="βy@IP誤差: %e m", VALUE=beta_y_ip_error;
+PRINTF, TEXT="αx@IP誤差: %e", VALUE=alpha_x_ip_error;
+PRINTF, TEXT="αy@IP誤差: %e", VALUE=alpha_y_ip_error;
+
+! ====================
+! 感度解析（オプション）
+! ====================
+PRINTF, TEXT="感度解析: 磁石強度の5%変化の影響";
+
+! KQF1を5%変化させて影響を確認
+kqf1_original := kqf1;
+kqf1 := kqf1 * 1.05;
+
+TWISS, BETX=10.0, BETY=10.0;
+beta_sensitivity := ABS(TABLE(TWISS,BETX,IP) - 1.0);
+PRINTF, TEXT="KQF1を5%増加 → βx@IP誤差: %f m", VALUE=beta_sensitivity;
+
+! 元に戻す
+kqf1 := kqf1_original;
+
+STOP;
+
+! ====================
+! 解答のポイント:
+! - 複数の制約条件を同時に満足するマッチング
+! - RANGE=IP で特定位置の制約
+! - RANGE=#E で終端の制約
+! - 対称性を利用した効率的な設計
+! - マッチング精度の定量的評価
+! - 感度解析による安定性確認
+! ====================

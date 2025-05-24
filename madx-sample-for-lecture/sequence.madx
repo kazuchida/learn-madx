@@ -1,4 +1,33 @@
 
 
 
-SEQEDIT, SEQUENCE=my_seq;
+! シーケンス定義の例
+! 基本的なFODO格子を定義
+
+TITLE, "FODO Lattice Example";
+
+! 要素の定義
+QF: QUADRUPOLE, L=0.5, K1=1.2;    ! 収束四極磁石
+QD: QUADRUPOLE, L=0.5, K1=-1.2;   ! 発散四極磁石
+DRIFT1: DRIFT, L=2.0;             ! ドリフト空間
+BPM: MONITOR;                     ! ビーム位置モニター
+
+! FODO格子シーケンスの定義
+FODO_CELL: SEQUENCE, L=6.0;
+    QF, AT=0.25;
+    BPM, AT=0.75;
+    DRIFT1, AT=1.75;
+    QD, AT=3.25;
+    BPM, AT=3.75;
+    DRIFT1, AT=4.75;
+ENDSEQUENCE;
+
+! より複雑なシーケンス（シーケンス編集の例）
+SEQEDIT, SEQUENCE=FODO_CELL;
+    ! 要素の追加
+    INSTALL, ELEMENT=BPM, AT=1.0;
+    ! 要素の削除や移動も可能
+ENDEDIT;
+
+! シーケンスの使用
+USE, SEQUENCE=FODO_CELL;

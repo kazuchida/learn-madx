@@ -1,0 +1,81 @@
+! 完全なMAD-X学習例
+! FODO格子のTwiss計算とマッチング
+
+TITLE, "Complete FODO Lattice Example for Learning";
+
+! ====================
+! 変数定義
+! ====================
+kqf := 1.2;    ! 収束四極磁石の強度（遅延変数）
+kqd := -1.2;   ! 発散四極磁石の強度（遅延変数）
+
+! ====================
+! 要素定義
+! ====================
+QF: QUADRUPOLE, L=0.5, K1:=kqf;
+QD: QUADRUPOLE, L=0.5, K1:=kqd;
+DRIFT1: DRIFT, L=2.0;
+BPM: MONITOR;
+
+! ====================
+! シーケンス定義
+! ====================
+FODO_CELL: SEQUENCE, L=6.0;
+    QF, AT=0.25;
+    BPM, AT=0.75;
+    DRIFT1, AT=1.75;
+    QD, AT=3.25;
+    BPM, AT=3.75;
+    DRIFT1, AT=4.75;
+ENDSEQUENCE;
+
+! ====================
+! ビーム定義
+! ====================
+BEAM, PARTICLE=PROTON, ENERGY=1.0;  ! 1 GeVプロトンビーム
+
+! ====================
+! シーケンス使用
+! ====================
+USE, SEQUENCE=FODO_CELL;
+
+! ====================
+! 初期Twiss計算
+! ====================
+SELECT, FLAG=TWISS, COLUMN=NAME,S,BETX,BETY,ALFX,ALFY,MUX,MUY;
+TWISS, BETX=10.0, BETY=10.0, FILE="initial_twiss.tfs";
+
+! 初期チューン値の表示
+VALUE, TABLE(SUMM,Q1), TABLE(SUMM,Q2);
+
+! ====================
+! マッチング例：特定のチューン値に調整
+! ====================
+MATCH;
+    VARY, NAME=kqf, STEP=0.001;
+    VARY, NAME=kqd, STEP=0.001;
+    GLOBAL, Q1=0.25, Q2=0.25;  ! 1/4チューン
+    LMDIF, CALLS=1000, TOLERANCE=1.0E-21;
+ENDMATCH;
+
+! マッチング後のTwiss計算
+TWISS, BETX=10.0, BETY=10.0, FILE="matched_twiss.tfs";
+
+! 最終チューン値の表示
+VALUE, TABLE(SUMM,Q1), TABLE(SUMM,Q2);
+VALUE, kqf, kqd;
+
+! ====================
+! プロット作成
+! ====================
+PLOT, HAXIS=S, VAXIS=BETX,BETY, COLOUR=100, FILE="beta_functions";
+
+! ====================
+! 追跡計算例
+! ====================
+TRACK, DELTAP=0.0;
+    START, X=0.001, Y=0.001;
+    RUN, TURNS=64;  ! 64ターン（4周期分）
+ENDTRACK;
+
+STOP;

@@ -1,0 +1,84 @@
+! 練習問題2の解答例: チューニング
+! 目標: FODO格子のチューンを特定の値(Qx=0.25, Qy=0.25)に調整
+
+TITLE, "Exercise 2: Tune Matching";
+
+! ====================
+! 変数定義（遅延変数として定義）
+! ====================
+kqf := 1.2;    ! 収束四極磁石強度（初期値）
+kqd := -1.2;   ! 発散四極磁石強度（初期値）
+
+! ====================
+! 要素定義
+! ====================
+QF: QUADRUPOLE, L=0.5, K1:=kqf;   ! 遅延変数を使用
+QD: QUADRUPOLE, L=0.5, K1:=kqd;   ! 遅延変数を使用
+DRIFT1: DRIFT, L=2.0;
+
+! ====================
+! シーケンス定義
+! ====================
+FODO_CELL: SEQUENCE, L=6.0;
+    QF, AT=0.25;
+    DRIFT1, AT=1.75;
+    QD, AT=3.25;
+    DRIFT1, AT=4.75;
+ENDSEQUENCE;
+
+! ====================
+! ビーム定義とシーケンス使用
+! ====================
+BEAM, PARTICLE=PROTON, ENERGY=1.0;
+USE, SEQUENCE=FODO_CELL;
+
+! ====================
+! マッチング前のTwiss計算
+! ====================
+TWISS, BETX=10.0, BETY=10.0;
+PRINTF, TEXT="マッチング前のチューン: Qx=%f, Qy=%f", 
+        VALUE=TABLE(SUMM,Q1), TABLE(SUMM,Q2);
+
+! ====================
+! マッチング実行
+! ====================
+MATCH;
+    ! 変数を調整対象として指定
+    VARY, NAME=kqf, STEP=0.001, LOWER=-10, UPPER=10;
+    VARY, NAME=kqd, STEP=0.001, LOWER=-10, UPPER=10;
+    
+    ! 目標チューン値を制約条件として設定
+    GLOBAL, Q1=0.25, Q2=0.25;
+    
+    ! 最適化実行
+    LMDIF, CALLS=1000, TOLERANCE=1.0E-21;
+ENDMATCH;
+
+! ====================
+! マッチング後のTwiss計算
+! ====================
+TWISS, BETX=10.0, BETY=10.0, FILE="exercise2_matched_twiss.tfs";
+
+! ====================
+! 結果の表示
+! ====================
+PRINTF, TEXT="マッチング後のチューン: Qx=%f, Qy=%f", 
+        VALUE=TABLE(SUMM,Q1), TABLE(SUMM,Q2);
+PRINTF, TEXT="最終的な磁石強度: KQF=%f, KQD=%f", 
+        VALUE=kqf, kqd;
+
+! ====================
+! プロット作成
+! ====================
+SELECT, FLAG=TWISS, COLUMN=NAME,S,BETX,BETY;
+PLOT, HAXIS=S, VAXIS=BETX,BETY, COLOUR=100, FILE="exercise2_beta_matched";
+
+STOP;
+
+! ====================
+! 解答のポイント:
+! - 遅延変数(:=)を使用することで、マッチング中に値が更新される
+! - VARY文で調整範囲を制限すると安定性が向上する
+! - GLOBAL制約でチューン値を指定
+! - マッチング前後の比較が重要
+! ====================
